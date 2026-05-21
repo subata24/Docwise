@@ -1,0 +1,7 @@
+.env
+venv/
+chroma_db/
+uploads/
+__pycache__/
+*.pyc
+docwise.db

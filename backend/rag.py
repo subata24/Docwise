@@ -1,0 +1,90 @@
+import os
+from langchain_groq import ChatGroq
+from langchain.chains import ConversationalRetrievalChain
+from langchain.memory import ConversationBufferWindowMemory
+from langchain.prompts import PromptTemplate
+from ingest import get_vectorstore
+from dotenv import load_dotenv
+
+load_dotenv()
+
+llm = ChatGroq(
+    api_key=os.getenv("GROQ_API_KEY"),
+    model_name="llama-3.1-8b-instant",
+    temperature=0.2,
+    max_tokens=1024
+)
+
+SYSTEM_PROMPT = PromptTemplate(
+    input_variables=["context", "question"],
+    template="""You are a precise document assistant.
+Answer based ONLY on the provided context.
+If the answer is not in the context, say so clearly.
+Never hallucinate or make up information.
+
+Context:
+{context}
+
+Question: {question}
+
+Answer:"""
+)
+
+
+def build_chain(user_id: str, doc_ids: list[str] | None = None):
+    vectorstore = get_vectorstore(user_id)
+
+    search_kwargs = {"k": 5}
+    if doc_ids:
+        search_kwargs["filter"] = {"doc_id": {"$in": doc_ids}}
+
+    retriever = vectorstore.as_retriever(
+        search_type="mmr",
+        search_kwargs=search_kwargs
+    )
+
+    memory = ConversationBufferWindowMemory(
+        memory_key="chat_history",
+        return_messages=True,
+        k=6
+    )
+
+    chain = ConversationalRetrievalChain.from_llm(
+        llm=llm,
+        retriever=retriever,
+        memory=memory,
+        combine_docs_chain_kwargs={"prompt": SYSTEM_PROMPT},
+        return_source_documents=True,
+        verbose=False
+    )
+    return chain
+
+
+def ask(chain, question: str) -> dict:
+    result  = chain({"question": question})
+    sources = list({
+        doc.metadata.get("source", "unknown")
+        for doc in result.get("source_documents", [])
+    })
+    return {"answer": result["answer"], "sources": sources}
+
+
+def compare_documents(user_id: str,
+                      doc_ids: list[str],
+                      question: str) -> dict:
+    results = {}
+    for doc_id in doc_ids:
+        chain           = build_chain(user_id, [doc_id])
+        results[doc_id] = ask(chain, question)["answer"]
+    return {"question": question, "by_document": results}
+
+
+def cross_search(user_id: str, query: str, k: int = 8) -> list:
+    vs      = get_vectorstore(user_id)
+    results = vs.similarity_search_with_score(query, k=k)
+    return [{
+        "content": doc.page_content[:400],
+        "source":  doc.metadata.get("source"),
+        "doc_id":  doc.metadata.get("doc_id"),
+        "score":   round(float(score), 3)
+    } for doc, score in results]
