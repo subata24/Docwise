@@ -88,7 +88,7 @@ html, body, [class*="css"] {
 try:
     API_URL = os.getenv("API_URL") or st.secrets.get("API_URL", "http://localhost:8001")
 except StreamlitSecretNotFoundError:
-    API_URL = os.getenv("API_URL", "http://localhost:8001")
+    API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 API_URL = API_URL.rstrip("/")
 
 
