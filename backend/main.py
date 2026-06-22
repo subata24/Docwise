@@ -1,11 +1,15 @@
-import uuid, os, shutil
+import os
+import shutil
+import uuid
+
 from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database import engine, get_db, Base, SessionLocal
-from models import Document
-from schemas import ChatRequest, ChatResponse
-from ingest import ingest_pdf, UPLOAD_DIR
-from rag import build_chain, ask, compare_documents, cross_search
+
+from backend.database import Base, SessionLocal, engine, get_db
+from backend.ingest import UPLOAD_DIR, ingest_pdf
+from backend.models import Document
+from backend.rag import ask, build_chain, compare_documents, cross_search
+from backend.schemas import ChatRequest, ChatResponse
 
 Base.metadata.create_all(bind=engine)
 app = FastAPI(title="DocWise API", version="1.0.0")
@@ -56,6 +60,12 @@ def _ingest_bg(path: str, doc_id: str, user_id: str):
             doc.status = "ready"
             doc.chunks = result["chunks_added"]
             db.commit()
+    except Exception as exc:
+        print(f"Failed to ingest document {doc_id}: {exc}", flush=True)
+        doc = db.query(Document).filter(Document.id == doc_id).first()
+        if doc:
+            doc.status = "failed"
+            db.commit()
     finally:
         db.close()
 
@@ -63,11 +73,10 @@ def _ingest_bg(path: str, doc_id: str, user_id: str):
 @app.get("/documents/{user_id}")
 def list_documents(user_id: str, db: Session = Depends(get_db)):
     docs = db.query(Document).filter(
-        Document.user_id == user_id,
-        Document.status  == "ready"
-    ).all()
+        Document.user_id == user_id
+    ).order_by(Document.created_at.desc()).all()
     return [{"doc_id": d.id, "filename": d.filename,
-             "chunks": d.chunks} for d in docs]
+             "status": d.status, "chunks": d.chunks} for d in docs]
 
 
 @app.get("/documents/{user_id}/{doc_id}/status")
@@ -84,7 +93,14 @@ def doc_status(user_id: str, doc_id: str,
 
 
 @app.post("/chat", response_model=ChatResponse)
-def chat(req: ChatRequest):
+def chat(req: ChatRequest, db: Session = Depends(get_db)):
+    ready_count = db.query(Document).filter(
+        Document.user_id == req.user_id,
+        Document.status == "ready"
+    ).count()
+    if ready_count == 0:
+        raise HTTPException(400, "No ready documents yet")
+
     key = f"{req.user_id}:{req.session_id}"
     if key not in _chains:
         _chains[key] = build_chain(req.user_id,

@@ -1,9 +1,9 @@
 import os
 from langchain_groq import ChatGroq
-from langchain.chains import ConversationalRetrievalChain
-from langchain.memory import ConversationBufferWindowMemory
-from langchain.prompts import PromptTemplate
-from ingest import get_vectorstore
+from langchain_classic.chains import ConversationalRetrievalChain
+from langchain_classic.memory import ConversationBufferWindowMemory
+from langchain_core.prompts import PromptTemplate
+from backend.ingest import get_vectorstore
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -45,6 +45,8 @@ def build_chain(user_id: str, doc_ids: list[str] | None = None):
 
     memory = ConversationBufferWindowMemory(
         memory_key="chat_history",
+        input_key="question",
+        output_key="answer",
         return_messages=True,
         k=6
     )

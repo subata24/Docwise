@@ -5,3 +5,5 @@ uploads/
 __pycache__/
 *.pyc
 docwise.db
+*.log
+*.err
