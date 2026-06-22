@@ -17,6 +17,14 @@ app = FastAPI(title="DocWise API", version="1.0.0")
 _chains: dict = {}
 
 
+@app.get("/")
+def root():
+    return {
+        "app": "DocWise",
+        "status": "running",
+        "version": "1.0.0"
+    }
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
