@@ -1,5 +1,5 @@
 import os
-from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_classic.chains import ConversationalRetrievalChain
 from langchain_classic.memory import ConversationBufferWindowMemory
 from langchain_core.prompts import PromptTemplate
@@ -8,11 +8,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-llm = ChatGroq(
-    api_key=os.getenv("GROQ_API_KEY"),
-    model_name="llama-3.1-8b-instant",
-    temperature=0.2,
-    max_tokens=1024
+llm = ChatGoogleGenerativeAI(
+    model=os.getenv(
+        "GOOGLE_MODEL",
+        "gemini-3.1-flash-lite"
+    ),
+    google_api_key=os.getenv("GOOGLE_API_KEY"),
+    temperature=0.2
 )
 
 SYSTEM_PROMPT = PromptTemplate(
