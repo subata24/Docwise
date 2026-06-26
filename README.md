@@ -77,17 +77,17 @@ Upload returns immediately. PDF processing runs as a background task. Poll the s
 
 │                            │
 
-┌──────────▼──────────┐    ┌────────────▼─────────────┐
+┌──────────▼──────────┐    ┌───────────---▼---─────────────┐
 
-│    PostgreSQL        │    │        RAG Layer          │
+│    PostgreSQL        │    │        RAG Layer             │
 
-│    Neon (cloud)      │    │  LangChain + ChromaDB    │
+│    Neon (cloud)      │    │  LangChain + ChromaDB        │
 
-│  Document records    │    │  Groq LLaMA 3.1          │
+│  Document records    │    │ Google Gemini 3.1 Flash Lite │
 
-│  Upload status       │    │  HuggingFace Embeddings  │
+│  Upload status       │    │  HuggingFace Embeddings      │
 
-└─────────────────────┘    └──────────────────────────┘
+└─────────────────────┘    └──────────────-----────────────┘
 
 **Ingestion workflow:**
 1. User uploads PDF via Streamlit
@@ -106,7 +106,7 @@ Upload returns immediately. PDF processing runs as a background task. Poll the s
 | Backend | FastAPI |
 | Database | PostgreSQL (Neon) |
 | ORM | SQLAlchemy |
-| AI model | Groq LLaMA 3.1 |
+| AI model | Google Gemini 3.1 Flash Lite |
 | RAG framework | LangChain |
 | Vector store | ChromaDB |
 | Embeddings | HuggingFace sentence-transformers |
@@ -156,7 +156,7 @@ Clear conversation memory for a session.
 
 ## Getting started locally
 
-**Prerequisites:** Python 3.11+, Groq API key from [console.groq.com](https://console.groq.com), Neon account from [neon.tech](https://neon.tech)
+**Prerequisites:** Python 3.11+, Neon account from [neon.tech](https://neon.tech)
 
 ```bash
 git clone https://github.com/subata24/Docwise
@@ -168,7 +168,8 @@ pip install -r requirements.txt
 
 Create `.env` in the root:
 ```env
-GROQ_API_KEY=your_groq_key
+GOOGLE_API_KEY
+GOOGLE_MODEL
 DATABASE_URL=postgresql://user:pass@localhost/docwise
 CHROMA_PERSIST_DIR=./chroma_db
 UPLOAD_DIR=./uploads
